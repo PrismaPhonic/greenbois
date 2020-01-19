@@ -1,9 +1,35 @@
 [package]
-name = "green-bois-magnet"
+name = "green-bois"
 version = "0.1.0"
 authors = ["Peter Farr <Peter@PrismaPhonic.com>"]
+description = "green bois magnet will help you fill out your github green square count"
+keywords = ["git", "version-control"]
+categories = ["command-line-utilities"]
+repository = "https://github.com/PrismaPhonic/green-bois-magnet"
+readme = "README.md"
+license = "MIT"
 edition = "2018"
+include = [
+    "**/*.rs",
+    "Cargo.toml",
+    "README.md"
+]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[badges]
+maintenance = { status = "actively-developed" }
+
+[[bin]]
+doc = false
+name = "greenbois"
+path = "src/bin/greenbois.rs"
 
 [dependencies]
+structopt = "0.3.3"
+time = "0.1.42"
+failure = "0.1.6"
+git2 = "0.11.0"
+
+[dev-dependencies]
+criterion = "0.3.0"
+tempfile = "3.1.0"
+rand = "0.7.2"
