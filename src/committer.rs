@@ -99,7 +99,7 @@ impl Committer {
     fn commit(&self, parent: &String, blob: &String, commit_time: OffsetDateTime) -> Result<(String, String), Error> {
         // Generate random number of times to commit today.
         let mut rng = rand::thread_rng();
-        let num_to_commit = rng.gen_range(0,6);
+        let num_to_commit = rng.gen_range(0,12);
         let mut parent = parent.clone();
         let mut blob = blob.clone();
 
