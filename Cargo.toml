@@ -1,5 +1,5 @@
 [package]
-name = "green-bois"
+name = "greenbois"
 version = "0.1.0"
 authors = ["Peter Farr <Peter@PrismaPhonic.com>"]
 description = "green bois magnet will help you fill out your github green square count"
@@ -24,12 +24,15 @@ name = "greenbois"
 path = "src/bin/greenbois.rs"
 
 [dependencies]
-structopt = "0.3.3"
-time = "0.1.42"
+structopt = "0.3.8"
+time = "0.2.3"
 failure = "0.1.6"
 git2 = "0.11.0"
+hex = "0.4.0"
+openssl = "0.10.26"
+rand = "0.7.3"
 
 [dev-dependencies]
 criterion = "0.3.0"
 tempfile = "3.1.0"
-rand = "0.7.2"
+rand = "0.7.3"
