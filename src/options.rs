@@ -22,7 +22,7 @@ pub enum Opts {
 
         /// Provide a number of years ago to begin writing the init commit from.
         /// Accepts floating point (e.g. 1.5 years ago)
-        #[structopt(short = "y", long = "years")]
+        #[structopt(short = "y", long = "years", default_value = "1.0")]
         yrs_ago: f64,
     },
 }
