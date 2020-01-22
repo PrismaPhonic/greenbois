@@ -12,8 +12,8 @@ pub mod errors;
 pub mod options;
 /// writer contains methods for building and manipulating git blobs.
 pub mod writer;
-/// hasher contains methods for hashing a blob.
-pub mod hasher;
+/// dates contains constants of holidays and logic around which days and times to skip committing on.
+pub mod dates;
 
 use crate::committer::Committer;
 pub use crate::options::{Options, Opts};

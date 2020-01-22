@@ -1,41 +1,14 @@
-use crate::errors::{GitTerminalError, IoError, RepositoryError};
+use crate::errors::{GitTerminalError, RepositoryError};
 use crate::options::Options;
 use crate::writer;
 use failure::Error;
-use git2::Repository;
-use std::env;
-use std::io::Write;
+use git2::{Repository, Oid};
 use std::path::PathBuf;
-use std::process::{Command, Stdio};
-use time::{Duration, OffsetDateTime, Date};
-use time::Weekday::{Saturday, Sunday};
-use crate::hasher;
+use time::{Duration, OffsetDateTime};
 use rand::prelude::*;
 use rand::distributions::WeightedIndex;
-
-// TODO: Move these gross constants to not be here. Hacky for now
-const NYDAY: Date = date!(2019-01-01);
-const MEMORIAL_DAY: Date = date!(2019-05-27);
-const INDEPENDENCE_DAY: Date = date!(2019-07-04);
-const DAY_AFTER_INDEP: Date = date!(2019-07-05);
-const LABOR_DAY: Date = date!(2019-09-02);
-const VETERANS_DAY: Date = date!(2019-11-11);
-const THANKSGIVING: Date = date!(2019-11-28);
-const DAY_AFTER_THANX: Date = date!(2019-11-28);
-const CHRISTMAS_EVE: Date = date!(2019-12-24);
-const CHRISTMAS_DAY: Date = date!(2019-12-25);
-const NYE: Date = date!(2019-12-31);
-const HOLIDAYS: [Date; 11] = [NYDAY, MEMORIAL_DAY, INDEPENDENCE_DAY, DAY_AFTER_INDEP, LABOR_DAY, VETERANS_DAY, THANKSGIVING, DAY_AFTER_THANX, CHRISTMAS_EVE, CHRISTMAS_DAY, NYE];
-
-fn is_holiday(date: Date) -> bool {
-    for holiday in HOLIDAYS.iter() {
-        if date.month_day() == holiday.month_day() {
-            return true
-        }
-    }
-
-    false
-}
+use crate::dates;
+use git2::ObjectType::Commit;
 
 /// A Committer does the work of issuing git commits.
 pub struct Committer {
@@ -43,18 +16,13 @@ pub struct Committer {
     author: String,
     message: String,
     yrs_ago: f64,
-    working_dir: PathBuf,
+    repo: Repository,
 }
 
 impl Committer {
     /// Creates a new Committer.
     pub fn new(options: Options) -> Result<Committer, Error> {
         let mut repo = Committer::get_repository(&options.repo)?;
-        let working_dir = repo
-            .workdir()
-            .ok_or(RepositoryError::WorkdirRetrievalError {})?
-            .to_path_buf();
-
         let tree = Committer::create_tree(&mut repo)?;
         let author = Committer::get_author(&repo)?;
 
@@ -63,7 +31,7 @@ impl Committer {
             author,
             message: options.msg,
             yrs_ago: options.yrs_ago,
-            working_dir,
+            repo,
         });
     }
 
@@ -71,110 +39,67 @@ impl Committer {
     pub fn commit_all(&self) -> Result<(), Error> {
         // Write init commit.
         let days_to_commit = (365.0 * self.yrs_ago).round() as i64;
-        let init_time = OffsetDateTime::now() - Duration::days(days_to_commit);
-        let mut commit_time = init_time.clone();
+        let mut commit_time = OffsetDateTime::now() - Duration::days(days_to_commit);
         let mut blob = writer::generate_initial_blob(&self.tree, &self.author, &self.message, commit_time)?;
-        self.commit_blob(blob.clone().into_bytes())?;
-        let mut parent = hex::encode(hasher::hash_blob(&blob));
+        let mut parent = self.commit_blob(blob.clone().into_bytes())?;
 
         // Main loop to write commits up until present day.
-        for i in 1..days_to_commit {
-            commit_time = init_time + Duration::days(i);
-            // skip weekends and holidays.
-            match commit_time.weekday() {
-                Saturday | Sunday => continue,
-                _ => (),
-            }
-            if is_holiday(commit_time.date()) {
+        for _ in 1..days_to_commit {
+            commit_time = commit_time + Duration::days(1);
+            if dates::should_skip_date(commit_time.date()) {
                 continue;
             }
 
-            let (p, b) = self.commit(&parent, &blob, commit_time)?;
+            let (p, b) = self.commit_from_time(&parent, &blob, commit_time)?;
             parent = p;
             blob = b;
         }
 
         // Reset head at end.
-        let final_hash = hasher::hash_blob(&blob);
-        self.reset_head_to_hash(&final_hash)?;
+        self.reset_head_to_hash(parent)?;
 
         Ok(())
     }
 
-    fn commit(&self, parent: &String, blob: &String, commit_time: OffsetDateTime) -> Result<(String, String), Error> {
+    fn commit_from_time(&self, parent: &Oid, blob: &String, start_time: OffsetDateTime) -> Result<(Oid, String), Error> {
+        let num_of_commits = Committer::gen_rand_num_commits();
+        let mut parent = parent.clone();
+        let mut blob = blob.clone();
+
+        for i in 0..num_of_commits {
+            let commit_time = start_time + Duration::minutes(((1440.0 / num_of_commits as f64) * (i as f64)).round() as i64);
+            blob = writer::generate_non_initial_blob(&self.tree, &hex::encode(parent.as_bytes()), &self.author, &self.message, commit_time)?;
+            parent = self.commit_blob(blob.clone().into_bytes())?;
+        }
+
+        Ok((parent, blob))
+    }
+
+    pub fn gen_rand_num_commits() -> i32 {
         // Generate random number of times to commit today.
         // Weight upper and lower numbers more to create believable spread.
         let choices = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
         let weights = [3, 4, 2, 2, 2, 1, 1, 1, 1, 2, 2, 2, 4, 3];
         let dist = WeightedIndex::new(&weights).unwrap();
         let mut rng = rand::thread_rng();
-        let num_to_commit = choices[dist.sample(&mut rng)];
-        let mut parent = parent.clone();
-        let mut blob = blob.clone();
-
-        for i in 0..num_to_commit {
-            let tm = commit_time + Duration::minutes(((1440.0 / num_to_commit as f64) * (i as f64)).round() as i64);
-            blob = writer::generate_non_initial_blob(&self.tree, &parent, &self.author, &self.message, tm)?;
-            self.commit_blob(blob.clone().into_bytes())?;
-            parent = hex::encode(hasher::hash_blob(&blob));
-        }
-
-        Ok((parent, blob))
+        choices[dist.sample(&mut rng)]
     }
 
-    fn reset_head_to_hash(&self, hash: &[u8; 20]) -> Result<(), Error> {
-        env::set_current_dir(&self.working_dir).unwrap();
-
-        // TODO: Figure out how to hide stderr in the case that we actually need to retry.
-        for _ in 0..5 {
-            let mut command = Command::new("git")
-                .args(&["reset", "--soft", &hex::encode(hash)])
-                .spawn()
-                .map_err(|_| GitTerminalError::ResetHeadError {})?;
-
-            let status = command
-                .wait()
-                .map_err(|_| GitTerminalError::ResetHeadError {})?;
-
-            if status.success() {
-                break;
-            }
-        }
+    fn reset_head_to_hash(&self, hash: Oid) -> Result<(), Error> {
+        self.repo.set_head_detached(hash)
+            .map_err(|_| GitTerminalError::ResetHeadError {})?;
 
         Ok(())
     }
 
-    fn commit_blob(&self, blob: Vec<u8>) -> Result<(), Error> {
-        env::set_current_dir(&self.working_dir).unwrap();
+    // Commits a blob returning the object id.
+    fn commit_blob(&self, blob: Vec<u8>) -> Result<Oid, Error> {
+        let oid = self.repo.odb()
+            .map_err(|_| GitTerminalError::CommitObjectError {})?
+            .write(Commit, &blob)
+            .map_err(|_| GitTerminalError::CommitObjectError {})?;
 
-        // TODO: Figure out how to hide stderr in the case that we actually need to retry.
-        for _ in 0..5 {
-            let mut commit_command = Command::new("git")
-                .args(&["hash-object", "-t", "commit", "-w", "--stdin"])
-                .stdin(Stdio::piped())
-                .stdout(Stdio::null())
-                .spawn()
-                .map_err(|_| GitTerminalError::CommitObjectError {})?;
-
-            let stdin = commit_command
-                .stdin
-                .as_mut()
-                .ok_or(IoError::StdinOpenError {})?;
-
-            stdin
-                .write_all(blob.as_slice())
-                .map_err(|_| IoError::StdinWriteError {})?;
-
-            let status = commit_command
-                .wait()
-                .map_err(|_| IoError::StdinWriteError {})?;
-
-            if status.success() {
-                break;
-            }
-        }
-
-        Ok(())
+        Ok(oid)
     }
 
     fn get_repository(repo: &PathBuf) -> Result<Repository, Error> {
