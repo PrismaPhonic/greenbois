@@ -11,6 +11,7 @@ use time::{Duration, Time, PrimitiveDateTime, OffsetDateTime};
 use time::Weekday::{Saturday, Sunday};
 use crate::hasher;
 use rand::Rng;
+use rand::distributions::WeightedIndex;
 
 /// A Committer does the work of issuing git commits.
 pub struct Committer {
@@ -98,8 +99,12 @@ impl Committer {
 
     fn commit(&self, parent: &String, blob: &String, commit_time: OffsetDateTime) -> Result<(String, String), Error> {
         // Generate random number of times to commit today.
+        // Weight upper and lower numbers more to create believable spread.
+        let choices = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
+        let weights = [4, 4, 3, 3, 2, 2, 1, 1, 2, 2, 3, 3, 4, 4];
+        let mut dist = WeightedIndex::new(&weights).unwrap();
         let mut rng = rand::thread_rng();
-        let num_to_commit = rng.gen_range(0,12);
+        let num_to_commit = choices[dist.sample(&mut rng)];
         let mut parent = parent.clone();
         let mut blob = blob.clone();
 
