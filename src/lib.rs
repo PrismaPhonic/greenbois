@@ -1,6 +1,9 @@
 #[macro_use]
 extern crate failure;
 
+#[macro_use]
+extern crate time;
+
 /// committer contains methods for issuing git commits.
 pub mod committer;
 /// custom in-house errors that we translate to from other errors received by external crates.

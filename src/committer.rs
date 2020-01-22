@@ -7,11 +7,32 @@ use std::env;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
-use time::{Duration, Time, PrimitiveDateTime, OffsetDateTime};
+use time::{Duration, Time, PrimitiveDateTime, OffsetDateTime, Date};
 use time::Weekday::{Saturday, Sunday};
 use crate::hasher;
-use rand::Rng;
+use rand::prelude::*;
 use rand::distributions::WeightedIndex;
+
+// TODO: Move these gross constants to not be here. Hacky for now
+const NYDAY: Date = date!(2019-01-01);
+const MEMORIAL_DAY: Date = date!(2019-05-27);
+const INDEPENDENCE_DAY: Date = date!(2019-07-04);
+const LABOR_DAY: Date = date!(2019-09-02);
+const VETERANS_DAY: Date = date!(2019-11-11);
+const THANKSGIVING: Date = date!(2019-11-28);
+const CHRISTMAS_EVE: Date = date!(2019-12-24);
+const CHRISTMAS_DAY: Date = date!(2019-12-25);
+const HOLIDAYS: [Date;8] = [NYDAY, MEMORIAL_DAY, INDEPENDENCE_DAY, LABOR_DAY, VETERANS_DAY, THANKSGIVING, CHRISTMAS_EVE, CHRISTMAS_DAY];
+
+fn is_holiday(date: Date) -> bool {
+    for holiday in HOLIDAYS.iter() {
+        if date.month_day() == holiday.month_day() {
+            return true
+        }
+    }
+
+    false
+}
 
 /// A Committer does the work of issuing git commits.
 pub struct Committer {
@@ -81,10 +102,15 @@ impl Committer {
         // Main loop to write commits up until present day.
         for i in 1..days_to_commit {
             commit_time = init_time + Duration::days(i);
+            // skip weekends and holidays.
             match commit_time.weekday() {
                 Saturday | Sunday => continue,
                 _ => (),
             }
+            if is_holiday(commit_time.date()) {
+                continue;
+            }
+
             let (p, b) = self.commit(&parent, &blob, commit_time)?;
             parent = p;
             blob = b;
@@ -101,7 +127,7 @@ impl Committer {
         // Generate random number of times to commit today.
         // Weight upper and lower numbers more to create believable spread.
         let choices = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
-        let weights = [4, 4, 3, 3, 2, 2, 1, 1, 2, 2, 3, 3, 4, 4];
+        let weights = [3, 4, 2, 2, 2, 1, 1, 1, 1, 2, 2, 2, 4, 3];
         let mut dist = WeightedIndex::new(&weights).unwrap();
         let mut rng = rand::thread_rng();
         let num_to_commit = choices[dist.sample(&mut rng)];
