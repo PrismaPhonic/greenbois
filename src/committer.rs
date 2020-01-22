@@ -24,7 +24,7 @@ const THANKSGIVING: Date = date!(2019-11-28);
 const DAY_AFTER_THANX: Date = date!(2019-11-28);
 const CHRISTMAS_EVE: Date = date!(2019-12-24);
 const CHRISTMAS_DAY: Date = date!(2019-12-25);
-const NYE: Date = date!(2019-01-31);
+const NYE: Date = date!(2019-12-31);
 const HOLIDAYS: [Date; 11] = [NYDAY, MEMORIAL_DAY, INDEPENDENCE_DAY, DAY_AFTER_INDEP, LABOR_DAY, VETERANS_DAY, THANKSGIVING, DAY_AFTER_THANX, CHRISTMAS_EVE, CHRISTMAS_DAY, NYE];
 
 fn is_holiday(date: Date) -> bool {
