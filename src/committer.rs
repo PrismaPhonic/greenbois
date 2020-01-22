@@ -17,12 +17,15 @@ use rand::distributions::WeightedIndex;
 const NYDAY: Date = date!(2019-01-01);
 const MEMORIAL_DAY: Date = date!(2019-05-27);
 const INDEPENDENCE_DAY: Date = date!(2019-07-04);
+const DAY_AFTER_INDEP: Date = date!(2019-07-05);
 const LABOR_DAY: Date = date!(2019-09-02);
 const VETERANS_DAY: Date = date!(2019-11-11);
 const THANKSGIVING: Date = date!(2019-11-28);
+const DAY_AFTER_THANX: Date = date!(2019-11-28);
 const CHRISTMAS_EVE: Date = date!(2019-12-24);
 const CHRISTMAS_DAY: Date = date!(2019-12-25);
-const HOLIDAYS: [Date;8] = [NYDAY, MEMORIAL_DAY, INDEPENDENCE_DAY, LABOR_DAY, VETERANS_DAY, THANKSGIVING, CHRISTMAS_EVE, CHRISTMAS_DAY];
+const NYE: Date = date!(2019-01-31);
+const HOLIDAYS: [Date; 11] = [NYDAY, MEMORIAL_DAY, INDEPENDENCE_DAY, DAY_AFTER_INDEP, LABOR_DAY, VETERANS_DAY, THANKSGIVING, DAY_AFTER_THANX, CHRISTMAS_EVE, CHRISTMAS_DAY, NYE];
 
 fn is_holiday(date: Date) -> bool {
     for holiday in HOLIDAYS.iter() {
