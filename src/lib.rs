@@ -16,9 +16,7 @@ pub mod writer;
 pub mod hasher;
 
 use crate::committer::Committer;
-use crate::errors::GitTerminalError;
 pub use crate::options::{Options, Opts};
-use std::process::Command;
 
 use failure::Error;
 

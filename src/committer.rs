@@ -7,7 +7,7 @@ use std::env;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
-use time::{Duration, Time, PrimitiveDateTime, OffsetDateTime, Date};
+use time::{Duration, OffsetDateTime, Date};
 use time::Weekday::{Saturday, Sunday};
 use crate::hasher;
 use rand::prelude::*;
@@ -40,54 +40,29 @@ fn is_holiday(date: Date) -> bool {
 /// A Committer does the work of issuing git commits.
 pub struct Committer {
     tree: String,
-    parent: Option<String>,
     author: String,
     message: String,
     yrs_ago: f64,
-    repo: PathBuf,
     working_dir: PathBuf,
 }
 
-struct CommitNode {
-    tree: String,
-    parent: Option<String>,
-    author: String,
-    working_dir: PathBuf,
-}
-
-impl CommitNode {
-    pub fn get_current(repo: &PathBuf) -> Result<CommitNode, Error> {
-        let mut repo = Committer::get_repository(repo)?;
+impl Committer {
+    /// Creates a new Committer.
+    pub fn new(options: Options) -> Result<Committer, Error> {
+        let mut repo = Committer::get_repository(&options.repo)?;
         let working_dir = repo
             .workdir()
             .ok_or(RepositoryError::WorkdirRetrievalError {})?
             .to_path_buf();
 
         let tree = Committer::create_tree(&mut repo)?;
-        let parent = Committer::get_parent(&repo);
         let author = Committer::get_author(&repo)?;
-
-        Ok(CommitNode {
-            tree,
-            parent,
-            author,
-            working_dir,
-        })
-    }
-}
-
-impl Committer {
-    /// Creates a new Committer.
-    pub fn new(options: Options) -> Result<Committer, Error> {
-        let CommitNode{tree, parent, author, working_dir} = CommitNode::get_current(&options.repo)?;
 
         return Ok(Committer {
             tree,
-            parent,
             author,
             message: options.msg,
             yrs_ago: options.yrs_ago,
-            repo: options.repo,
             working_dir,
         });
     }
@@ -131,7 +106,7 @@ impl Committer {
         // Weight upper and lower numbers more to create believable spread.
         let choices = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
         let weights = [3, 4, 2, 2, 2, 1, 1, 1, 1, 2, 2, 2, 4, 3];
-        let mut dist = WeightedIndex::new(&weights).unwrap();
+        let dist = WeightedIndex::new(&weights).unwrap();
         let mut rng = rand::thread_rng();
         let num_to_commit = choices[dist.sample(&mut rng)];
         let mut parent = parent.clone();
@@ -235,13 +210,5 @@ impl Committer {
             .map_err(|_| RepositoryError::TreeWriteError {})?;
 
         return Ok(format!("{}", tree));
-    }
-
-    fn get_parent(repository: &Repository) -> Option<String> {
-        if let Ok(head) = repository.revparse_single("HEAD") {
-            return Some(format!("{}", head.id()));
-        } else {
-            return None;
-        }
     }
 }

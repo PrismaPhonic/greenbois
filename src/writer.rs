@@ -1,6 +1,4 @@
-use crate::errors::WriterErrors;
 use failure::Error;
-use std::sync::atomic::Ordering;
 
 // time_str takes a time::Tm object and turns it into a string formatted per git commit
 // convention.
