@@ -19,6 +19,11 @@ use crate::committer::Committer;
 pub use crate::options::{Options, Opts};
 
 use failure::Error;
+use time::Time;
+
+// TODO: Change this to be passed in by a flag.
+const START: Time = time!(10:00:00);
+const END: Time = time!(20:00:00);
 
 /// Calling this function from a binary program will cause it to match on the commands
 /// passed by the user, and run the appropriate internal functions.

@@ -1,15 +1,16 @@
+use crate::{dates, END, START};
 use crate::errors::{GitTerminalError, RepositoryError};
 use crate::options::Options;
 use crate::writer;
 use failure::Error;
-use git2::{Repository, Oid, ObjectType};
-use std::path::PathBuf;
-use time::{Duration, OffsetDateTime};
-use rand::prelude::*;
-use rand::distributions::WeightedIndex;
-use crate::dates;
 use git2::ObjectType::Commit;
 use git2::ResetType::Mixed;
+use git2::{Oid, Repository};
+use rand::distributions::WeightedIndex;
+use rand::prelude::*;
+use std::path::PathBuf;
+use time::{Duration, OffsetDateTime};
+use crate::dates::generate_start_timestamp;
 
 /// A Committer does the work of issuing git commits.
 pub struct Committer {
@@ -40,17 +41,14 @@ impl Committer {
     pub fn commit_all(&self) -> Result<(), Error> {
         // Write init commit.
         let days_to_commit = (365.0 * self.yrs_ago).round() as i64;
-        let mut commit_time = OffsetDateTime::now() - Duration::days(days_to_commit);
-        let mut blob = writer::generate_initial_blob(&self.tree, &self.author, &self.message, commit_time)?;
+        let mut commit_time = generate_start_timestamp(days_to_commit);
+        let mut blob =
+            writer::generate_initial_blob(&self.tree, &self.author, &self.message, commit_time)?;
         let mut parent = self.commit_blob(blob.clone().into_bytes())?;
 
         // Main loop to write commits up until present day.
         for _ in 1..days_to_commit {
             commit_time = commit_time + Duration::days(1);
-            if dates::should_skip_date(commit_time.date()) {
-                continue;
-            }
-
             let (p, b) = self.commit_from_time(&parent, &blob, commit_time)?;
             parent = p;
             blob = b;
@@ -62,14 +60,33 @@ impl Committer {
         Ok(())
     }
 
-    fn commit_from_time(&self, parent: &Oid, blob: &String, start_time: OffsetDateTime) -> Result<(Oid, String), Error> {
+    fn commit_from_time(
+        &self,
+        parent: &Oid,
+        blob: &String,
+        start_time: OffsetDateTime,
+    ) -> Result<(Oid, String), Error> {
         let num_of_commits = Committer::gen_rand_num_commits();
         let mut parent = parent.clone();
         let mut blob = blob.clone();
 
+        // TODO: Change to depend on flags from term app.
+        let work_duration = END - START;
+
         for i in 0..num_of_commits {
-            let commit_time = start_time + Duration::minutes(((1440.0 / num_of_commits as f64) * (i as f64)).round() as i64);
-            blob = writer::generate_non_initial_blob(&self.tree, &hex::encode(parent.as_bytes()), &self.author, &self.message, commit_time)?;
+            let commit_time = start_time
+                + Duration::seconds_f64((work_duration.as_seconds_f64() / num_of_commits as f64) * (i as f64));
+
+            if dates::should_skip_date(commit_time.date()) {
+                continue;
+            }
+            blob = writer::generate_non_initial_blob(
+                &self.tree,
+                &hex::encode(parent.as_bytes()),
+                &self.author,
+                &self.message,
+                commit_time,
+            )?;
             parent = self.commit_blob(blob.clone().into_bytes())?;
         }
 
@@ -87,10 +104,13 @@ impl Committer {
     }
 
     fn reset_head_to_hash(&self, hash: Oid) -> Result<(), Error> {
-        let obj = self.repo.find_object(hash, Some(Commit))
+        let obj = self
+            .repo
+            .find_object(hash, Some(Commit))
             .map_err(|_| GitTerminalError::ResetHeadError {})?;
 
-        self.repo.reset(&obj, Mixed, None)
+        self.repo
+            .reset(&obj, Mixed, None)
             .map_err(|_| GitTerminalError::ResetHeadError {})?;
 
         Ok(())
@@ -98,7 +118,9 @@ impl Committer {
 
     // Commits a blob returning the object id.
     fn commit_blob(&self, blob: Vec<u8>) -> Result<Oid, Error> {
-        let oid = self.repo.odb()
+        let oid = self
+            .repo
+            .odb()
             .map_err(|_| GitTerminalError::CommitObjectError {})?
             .write(Commit, &blob)
             .map_err(|_| GitTerminalError::CommitObjectError {})?;
@@ -107,8 +129,7 @@ impl Committer {
     }
 
     fn get_repository(repo: &PathBuf) -> Result<Repository, Error> {
-        let repository =
-            Repository::open(&repo).map_err(|_| RepositoryError::OpenError {})?;
+        let repository = Repository::open(&repo).map_err(|_| RepositoryError::OpenError {})?;
 
         Ok(repository)
     }

@@ -27,13 +27,6 @@ pub enum IoError {
     StdinWriteError {},
 }
 
-/// Errors within the mining process, and always originating from the Miner struct.
-#[derive(Debug, Fail)]
-pub enum MiningError {
-    #[fail(display = "Failed to find a nonce that when hashed with the commit satisfied the prefix constraint.")]
-    SolveError {},
-}
-
 /// These errors relate to running git terminal commands internally within the library, and handling errors passed back from git.
 #[derive(Debug, Fail)]
 pub enum GitTerminalError {
