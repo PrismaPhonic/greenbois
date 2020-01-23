@@ -2,13 +2,14 @@ use crate::errors::{GitTerminalError, RepositoryError};
 use crate::options::Options;
 use crate::writer;
 use failure::Error;
-use git2::{Repository, Oid};
+use git2::{Repository, Oid, ObjectType};
 use std::path::PathBuf;
 use time::{Duration, OffsetDateTime};
 use rand::prelude::*;
 use rand::distributions::WeightedIndex;
 use crate::dates;
 use git2::ObjectType::Commit;
+use git2::ResetType::Mixed;
 
 /// A Committer does the work of issuing git commits.
 pub struct Committer {
@@ -86,7 +87,10 @@ impl Committer {
     }
 
     fn reset_head_to_hash(&self, hash: Oid) -> Result<(), Error> {
-        self.repo.set_head_detached(hash)
+        let obj = self.repo.find_object(hash, Some(Commit))
+            .map_err(|_| GitTerminalError::ResetHeadError {})?;
+
+        self.repo.reset(&obj, Mixed, None)
             .map_err(|_| GitTerminalError::ResetHeadError {})?;
 
         Ok(())
