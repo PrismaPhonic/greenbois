@@ -82,7 +82,7 @@ impl Committer {
             }
             blob = writer::generate_non_initial_blob(
                 &self.tree,
-                &hex::encode(parent.as_bytes()),
+                &parent.to_string(),
                 &self.author,
                 &self.message,
                 commit_time,
