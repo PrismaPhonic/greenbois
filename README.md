@@ -20,11 +20,14 @@ $ cargo install --path .
 3. Run `git init` inside the folder.
 4. Run `greenbois` using the `commit` command, pass it a message with the `-m` flag (for now this message,
 will apply to all commits made, but that doesn't matter.) and `-y` flag to specify a number of years in the past to create the init commit.
-Commits will be created from this date, skipping major US holidays and weekends, and randomizing the # of commits made per day. Full example command
-is: 
+Commits will be created from this date, skipping major US holidays and weekends, and randomizing the # of commits made per day. You may also 
+optionally supply a start and end time for your work day in hours (24 hour
+format) with the `-s` and `-e` flags respectively.
+
+Full example command: 
 
 ```sh
-$ greenbois commit -m "Stupid message." -y 1.5
+$ greenbois commit -m "Stupid message." -y 1.5 -s 9 -e 17
 ```
 
 Have fun!
