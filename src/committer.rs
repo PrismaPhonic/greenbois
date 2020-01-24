@@ -1,4 +1,4 @@
-use crate::{dates, END, START};
+use crate::dates;
 use crate::errors::{GitTerminalError, RepositoryError};
 use crate::options::Options;
 use crate::writer;
@@ -9,15 +9,17 @@ use git2::{Oid, Repository};
 use rand::distributions::WeightedIndex;
 use rand::prelude::*;
 use std::path::PathBuf;
-use time::{Duration, OffsetDateTime};
-use crate::dates::generate_start_timestamp;
+use chrono::{DateTime, Local, Duration, NaiveTime};
 
 /// A Committer does the work of issuing git commits.
 pub struct Committer {
     tree: String,
     author: String,
     message: String,
-    yrs_ago: f64,
+    days_to_commit: i64,
+    start_datetime: DateTime<Local>,
+    start_hour: NaiveTime,
+    end_hour: NaiveTime,
     repo: Repository,
 }
 
@@ -28,11 +30,19 @@ impl Committer {
         let tree = Committer::create_tree(&mut repo)?;
         let author = Committer::get_author(&repo)?;
 
+        let days_to_commit = (365.0 * options.yrs_ago).round() as i64;
+        let now = Local::now();
+        let corrected_now = now - (now.time() - options.start);
+        let start_datetime = corrected_now - Duration::days(days_to_commit);
+
         return Ok(Committer {
             tree,
             author,
             message: options.msg,
-            yrs_ago: options.yrs_ago,
+            days_to_commit,
+            start_datetime,
+            start_hour: options.start,
+            end_hour: options.end,
             repo,
         });
     }
@@ -40,16 +50,16 @@ impl Committer {
     /// This method can be called to write all commits from yrs ago to current date.
     pub fn commit_all(&self) -> Result<(), Error> {
         // Write init commit.
-        let days_to_commit = (365.0 * self.yrs_ago).round() as i64;
-        let mut commit_time = generate_start_timestamp(days_to_commit);
+        let mut commit_time = self.start_datetime;
         let mut blob =
             writer::generate_initial_blob(&self.tree, &self.author, &self.message, commit_time)?;
         let mut parent = self.commit_blob(blob.clone().into_bytes())?;
+        let work_duration = self.end_hour - self.start_hour;
 
         // Main loop to write commits up until present day.
-        for _ in 1..days_to_commit {
+        for _ in 1..self.days_to_commit {
             commit_time = commit_time + Duration::days(1);
-            let (p, b) = self.commit_from_time(&parent, &blob, commit_time)?;
+            let (p, b) = self.commit_from_time(&parent, &blob, commit_time, work_duration)?;
             parent = p;
             blob = b;
         }
@@ -64,18 +74,17 @@ impl Committer {
         &self,
         parent: &Oid,
         blob: &String,
-        start_time: OffsetDateTime,
+        start_time: DateTime<Local>,
+        work_duration: Duration,
     ) -> Result<(Oid, String), Error> {
         let num_of_commits = Committer::gen_rand_num_commits();
         let mut parent = parent.clone();
         let mut blob = blob.clone();
 
-        // TODO: Change to depend on flags from term app.
-        let work_duration = END - START;
 
         for i in 0..num_of_commits {
             let commit_time = start_time
-                + Duration::seconds_f64((work_duration.as_seconds_f64() / num_of_commits as f64) * (i as f64));
+                + Duration::seconds(((work_duration.num_seconds() as f64 / num_of_commits as f64) * (i as f64)) as i64);
 
             if dates::should_skip_date(commit_time.date()) {
                 continue;

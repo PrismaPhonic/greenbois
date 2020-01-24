@@ -1,14 +1,14 @@
 use failure::Error;
+use chrono::{Local, DateTime};
 
-// time_str takes a time::Tm object and turns it into a string formatted per git commit
+// time_str takes a chrono::Local object and turns it into a string formatted per git commit
 // convention.
-pub fn time_string(time: time::OffsetDateTime) -> Result<String, Error> {
+pub fn time_string(time: DateTime<Local>) -> Result<String, Error> {
     Ok(
         format!(
             "{} {}",
             time.timestamp(),
-            time
-                .format("%z"),
+            time.offset(),
         )
     )
 }
@@ -17,13 +17,12 @@ pub fn generate_initial_blob(
     tree: &String,
     author: &String,
     message: &String,
-    commit_time: time::OffsetDateTime,
+    commit_time: DateTime<Local>,
 ) -> Result<String, Error> {
     let time_str = time_string(commit_time)?;
 
     Ok(
-        format!(
-            "tree {}\n\
+        format!("tree {}\n\
          author {} {}\n\
          committer {} {}\n\n\
          {}",
@@ -37,13 +36,12 @@ pub fn generate_non_initial_blob(
     parent: &String,
     author: &String,
     message: &String,
-    commit_time: time::OffsetDateTime,
+    commit_time: DateTime<Local>,
 ) -> Result<String, Error> {
     let time_str = time_string(commit_time)?;
 
     Ok(
-        format!(
-            "tree {}\n\
+        format!("tree {}\n\
              parent {}\n\
              author {} {}\n\
              committer {} {}\n\n\
