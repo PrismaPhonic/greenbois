@@ -1,19 +1,20 @@
-use time::{Date, OffsetDateTime, Duration};
-use time::Weekday::{Saturday, Sunday};
-use crate::START;
+use chrono::{Local, Datelike, Date};
+use chrono::Weekday::{Sat,Sun};
 
-const NYDAY: Date = date!(2019 - 01 - 01);
-const MEMORIAL_DAY: Date = date!(2019 - 05 - 27);
-const INDEPENDENCE_DAY: Date = date!(2019 - 07 - 04);
-const DAY_AFTER_INDEP: Date = date!(2019 - 07 - 05);
-const LABOR_DAY: Date = date!(2019 - 09 - 02);
-const VETERANS_DAY: Date = date!(2019 - 11 - 11);
-const THANKSGIVING: Date = date!(2019 - 11 - 28);
-const DAY_AFTER_THANX: Date = date!(2019 - 11 - 28);
-const CHRISTMAS_EVE: Date = date!(2019 - 12 - 24);
-const CHRISTMAS_DAY: Date = date!(2019 - 12 - 25);
-const NYE: Date = date!(2019 - 12 - 31);
-const HOLIDAYS: [Date; 11] = [
+type MonthDay = (u8, u8);
+
+const NYDAY: MonthDay = (01, 01);
+const MEMORIAL_DAY: MonthDay = (05, 27);
+const INDEPENDENCE_DAY: MonthDay = (07, 04);
+const DAY_AFTER_INDEP: MonthDay = (07, 05);
+const LABOR_DAY: MonthDay = (09, 02);
+const VETERANS_DAY: MonthDay = (11, 11);
+const THANKSGIVING: MonthDay = (11, 28);
+const DAY_AFTER_THANX: MonthDay = (11, 28);
+const CHRISTMAS_EVE: MonthDay = (12, 24);
+const CHRISTMAS_DAY: MonthDay = (12, 25);
+const NYE: MonthDay = (12, 31);
+const HOLIDAYS: [MonthDay; 11] = [
     NYDAY,
     MEMORIAL_DAY,
     INDEPENDENCE_DAY,
@@ -27,15 +28,11 @@ const HOLIDAYS: [Date; 11] = [
     NYE,
 ];
 
-pub fn generate_start_timestamp(days_to_commit: i64) -> OffsetDateTime {
-    let now = OffsetDateTime::now();
-    let corrected_now = now - (now.time() - START);
-    corrected_now - Duration::days(days_to_commit)
-}
+pub fn is_holiday(date: Date<Local>) -> bool {
+    let month_day: MonthDay = (date.month() as u8, date.day() as u8);
 
-pub fn is_holiday(date: Date) -> bool {
     for holiday in HOLIDAYS.iter() {
-        if date.month_day() == holiday.month_day() {
+        if &month_day == holiday {
             return true;
         }
     }
@@ -43,9 +40,9 @@ pub fn is_holiday(date: Date) -> bool {
     false
 }
 
-pub fn should_skip_date(date: Date) -> bool {
+pub fn should_skip_date(date: Date<Local>) -> bool {
     match date.weekday() {
-        Saturday | Sunday => {
+        Sat | Sun => {
             return true;
         }
         _ => {}
