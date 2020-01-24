@@ -1,6 +1,7 @@
 extern crate structopt;
 use structopt::StructOpt;
 use std::path::PathBuf;
+use chrono::NaiveTime;
 
 #[derive(StructOpt, Debug)]
 #[structopt(
@@ -24,6 +25,18 @@ pub enum Opts {
         /// Accepts floating point (e.g. 1.5 years ago)
         #[structopt(short = "y", long = "years", default_value = "1.0")]
         yrs_ago: f64,
+
+        /// Provide a start time for your work day as an hour in 24 hour format.
+        /// Example: 8 for 8am, or 10 for 10am.
+        /// Defaults to 10.
+        #[structopt(short = "s", long = "start", default_value = "10")]
+        start: u32,
+
+        /// Provide an end time for your work day as an hour in 24 hour format.
+        /// Example: 17 for 5pm, or 20 for 8pm.
+        /// Defaults to 20.
+        #[structopt(short = "e", long = "end", default_value = "20")]
+        end: u32,
     },
 }
 
@@ -32,4 +45,6 @@ pub struct Options {
     pub repo: PathBuf,
     pub msg: String,
     pub yrs_ago: f64,
+    pub start: NaiveTime,
+    pub end: NaiveTime,
 }
