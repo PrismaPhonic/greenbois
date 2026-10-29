@@ -1,15 +1,14 @@
 use crate::dates;
-use crate::errors::{GitTerminalError, RepositoryError};
+use crate::errors::{Error, GitTerminalError, RepositoryError};
 use crate::options::Options;
 use crate::writer;
-use failure::Error;
+use chrono::{DateTime, Duration, Local, NaiveTime};
 use git2::ObjectType::Commit;
 use git2::ResetType::Mixed;
 use git2::{Oid, Repository};
 use rand::distributions::WeightedIndex;
 use rand::prelude::*;
 use std::path::PathBuf;
-use chrono::{DateTime, Local, Duration, NaiveTime};
 
 /// A Committer does the work of issuing git commits.
 pub struct Committer {
@@ -52,13 +51,13 @@ impl Committer {
         // Write init commit.
         let mut commit_time = self.start_datetime;
         let mut blob =
-            writer::generate_initial_blob(&self.tree, &self.author, &self.message, commit_time)?;
+            writer::generate_initial_blob(&self.tree, &self.author, &self.message, &commit_time)?;
         let mut parent = self.commit_blob(blob.clone().into_bytes())?;
         let work_duration = self.end_hour - self.start_hour;
 
         // Main loop to write commits up until present day.
         for _ in 1..self.days_to_commit {
-            commit_time = commit_time + Duration::days(1);
+            commit_time += Duration::days(1);
             let (p, b) = self.commit_from_time(&parent, &blob, commit_time, work_duration)?;
             parent = p;
             blob = b;
@@ -73,33 +72,37 @@ impl Committer {
     fn commit_from_time(
         &self,
         parent: &Oid,
+        // TODO: This is very weird but required based on how I originally built it. Refactor.
         blob: &String,
         start_time: DateTime<Local>,
         work_duration: Duration,
     ) -> Result<(Oid, String), Error> {
         let num_of_commits = Committer::gen_rand_num_commits();
-        let mut parent = parent.clone();
+        let mut parent = *parent;
         let mut blob = blob.clone();
-
 
         for i in 0..num_of_commits {
             let commit_time = start_time
-                + Duration::seconds(((work_duration.num_seconds() as f64 / num_of_commits as f64) * (i as f64)) as i64);
+                + Duration::seconds(
+                    ((work_duration.num_seconds() as f64 / num_of_commits as f64) * (i as f64))
+                        as i64,
+                );
 
-            if dates::should_skip_date(commit_time.date()) {
+            if dates::should_skip_date(&commit_time) {
                 continue;
             }
             blob = writer::generate_non_initial_blob(
                 &self.tree,
-                &parent.to_string(),
+                parent.to_string(),
                 &self.author,
                 &self.message,
-                commit_time,
+                &commit_time,
             )?;
-            parent = self.commit_blob(blob.clone().into_bytes())?;
+            // TODO: This is wildly inefficient - fix.
+            parent = self.commit_blob(blob.to_owned().into_bytes())?;
         }
 
-        Ok((parent, blob))
+        Ok((parent, blob.to_owned()))
     }
 
     pub fn gen_rand_num_commits() -> i32 {

@@ -1,54 +1,46 @@
-use failure::Error;
-use chrono::{Local, DateTime};
+use chrono::{DateTime, Local};
+use crate::errors::Error;
 
 // time_str takes a chrono::Local object and turns it into a string formatted per git commit
 // convention.
-pub fn time_string(time: DateTime<Local>) -> Result<String, Error> {
-    Ok(
-        format!(
-            "{} {}",
-            time.timestamp(),
-            time.offset(),
-        )
-    )
+pub fn time_string(time: &DateTime<Local>) -> Result<String, Error> {
+    Ok(format!("{} {}", time.timestamp(), time.offset(),))
 }
 
 pub fn generate_initial_blob(
-    tree: &String,
-    author: &String,
-    message: &String,
-    commit_time: DateTime<Local>,
+    tree: &str,
+    author: &str,
+    message: &str,
+    commit_time: &DateTime<Local>,
 ) -> Result<String, Error> {
     let time_str = time_string(commit_time)?;
 
-    Ok(
-        format!("tree {}\n\
+    Ok(format!(
+        "tree {}\n\
          author {} {}\n\
          committer {} {}\n\n\
          {}",
-            tree, author, time_str, author, time_str, message
-        )
-    )
+        tree, author, time_str, author, time_str, message
+    ))
 }
 
 pub fn generate_non_initial_blob(
-    tree: &String,
-    parent: &String,
-    author: &String,
-    message: &String,
-    commit_time: DateTime<Local>,
+    tree: &str,
+    parent: String,
+    author: &str,
+    message: &str,
+    commit_time: &DateTime<Local>,
 ) -> Result<String, Error> {
     let time_str = time_string(commit_time)?;
 
-    Ok(
-        format!("tree {}\n\
+    Ok(format!(
+        "tree {}\n\
              parent {}\n\
              author {} {}\n\
              committer {} {}\n\n\
              {}",
-            tree, parent, author, time_str, author, time_str, message
-        )
-    )
+        tree, parent, author, time_str, author, time_str, message
+    ))
 }
 
 /// Prepends the necessary header to the blob, which is necessary before we check the blobs

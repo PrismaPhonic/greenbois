@@ -1,13 +1,13 @@
-use chrono::{Local, Datelike, Date};
-use chrono::Weekday::{Sat,Sun};
+use chrono::Weekday::{Sat, Sun};
+use chrono::{DateTime, Datelike, Local};
 
 type MonthDay = (u8, u8);
 
-const NYDAY: MonthDay = (01, 01);
-const MEMORIAL_DAY: MonthDay = (05, 27);
-const INDEPENDENCE_DAY: MonthDay = (07, 04);
-const DAY_AFTER_INDEP: MonthDay = (07, 05);
-const LABOR_DAY: MonthDay = (09, 02);
+const NYDAY: MonthDay = (1, 1);
+const MEMORIAL_DAY: MonthDay = (5, 27);
+const INDEPENDENCE_DAY: MonthDay = (7, 4);
+const DAY_AFTER_INDEP: MonthDay = (7, 5);
+const LABOR_DAY: MonthDay = (9, 2);
 const VETERANS_DAY: MonthDay = (11, 11);
 const THANKSGIVING: MonthDay = (11, 28);
 const DAY_AFTER_THANX: MonthDay = (11, 28);
@@ -28,7 +28,7 @@ const HOLIDAYS: [MonthDay; 11] = [
     NYE,
 ];
 
-pub fn is_holiday(date: Date<Local>) -> bool {
+pub fn is_holiday(date: &DateTime<Local>) -> bool {
     let month_day: MonthDay = (date.month() as u8, date.day() as u8);
 
     for holiday in HOLIDAYS.iter() {
@@ -40,7 +40,7 @@ pub fn is_holiday(date: Date<Local>) -> bool {
     false
 }
 
-pub fn should_skip_date(date: Date<Local>) -> bool {
+pub fn should_skip_date(date: &DateTime<Local>) -> bool {
     match date.weekday() {
         Sat | Sun => {
             return true;

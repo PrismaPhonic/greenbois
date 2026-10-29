@@ -1,46 +1,59 @@
 /// Errors originating from git2::Repository struct methods, translated for friendly error handling within
 /// the gitchain library.
-#[derive(Debug, Fail)]
+#[derive(Debug, thiserror::Error)]
 pub enum RepositoryError {
-    #[fail(display = "Failed to retrieve signature from git repository.")]
+    #[error("Failed to retrieve signature from git repository.")]
     SignatureRetrievalError {},
-    #[fail(display = "Repository is missing git users name. Have you set it up yet?")]
+    #[error("Repository is missing git users name. Have you set it up yet?")]
     NameRetrievalError {},
-    #[fail(display = "Repository is missing git users email. Have you set it up yet?")]
+    #[error("Repository is missing git users email. Have you set it up yet?")]
     EmailRetrievalError {},
-    #[fail(display = "Failed to retrieve working directory for that repository.")]
+    #[error("Failed to retrieve working directory for that repository.")]
     WorkdirRetrievalError {},
-    #[fail(display = "Failed to open repository at that path.")]
+    #[error("Failed to open repository at that path.")]
     OpenError {},
-    #[fail(display = "Could not find the current repositories index.")]
+    #[error("Could not find the current repositories index.")]
     FindIndexError {},
-    #[fail(display = "Failed to write tree.")]
+    #[error("Failed to write tree.")]
     TreeWriteError {},
 }
 
 /// General IO errors.
-#[derive(Debug, Fail)]
+#[derive(Debug, thiserror::Error)]
 pub enum IoError {
-    #[fail(display = "Failed to open stdin.")]
+    #[error("Failed to open stdin.")]
     StdinOpenError {},
-    #[fail(display = "Failed to write to stdin.")]
+    #[error("Failed to write to stdin.")]
     StdinWriteError {},
 }
 
 /// These errors relate to running git terminal commands internally within the library, and handling errors passed back from git.
-#[derive(Debug, Fail)]
+#[derive(Debug, thiserror::Error)]
 pub enum GitTerminalError {
-    #[fail(display = "Failed to reset head to new commit.")]
+    #[error("Failed to reset head to new commit.")]
     ResetHeadError {},
-    #[fail(display = "Failed to generate commit object.")]
+    #[error("Failed to generate commit object.")]
     CommitObjectError {},
-    #[fail(display = "Failed to add files to staging.")]
+    #[error("Failed to add files to staging.")]
     AddError {},
 }
 
 /// Errors from the Writer module.
-#[derive(Debug, Fail)]
+#[derive(Debug, thiserror::Error)]
 pub enum WriterErrors {
-    #[fail(display = "Failed to format timestamp.")]
+    #[error("Failed to format timestamp.")]
     TimeFormatError {},
+}
+
+/// Top level error type wrapping all in-house errors.
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    #[error(transparent)]
+    Repository(#[from] RepositoryError),
+    #[error(transparent)]
+    Io(#[from] IoError),
+    #[error(transparent)]
+    GitTerminal(#[from] GitTerminalError),
+    #[error(transparent)]
+    Writer(#[from] WriterErrors),
 }
