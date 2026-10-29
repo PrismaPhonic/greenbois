@@ -52,27 +52,31 @@ pub fn prepend_header_to_blob(blob: &str) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::TimeZone;
 
     #[test]
     fn test_prepending_header() {
         let blob = prepend_header_to_blob("test");
-        assert_eq!(std::str::from_utf8(&blob).unwrap(), "commit 20\0test");
+        assert_eq!(std::str::from_utf8(&blob).unwrap(), "commit 4\0test");
     }
 
     #[test]
     fn test_blob_generation_with_parent() -> Result<(), Error> {
-        let tree = "TreeTest".to_string();
-        let parent = Some("ParentTest".to_string());
-        let author = "AuthorTest <test@test.com>".to_string();
-        let message = "MessageTest".to_string();
-        let commit_time = time::strptime("2016-02-05 16:52:22", "%Y-%m-%d %H:%M:%S")?;
-        let blob = generate_blob(tree, parent, author, message, commit_time)?;
+        let tree = "TreeTest";
+        let parent = "ParentTest".to_string();
+        let author = "AuthorTest <test@test.com>";
+        let message = "MessageTest";
+        let commit_time = Local.timestamp_opt(1454691142, 0).unwrap();
+        let blob = generate_non_initial_blob(tree, parent, author, message, &commit_time)?;
 
-        let expected = "tree TreeTest\n\
-                        parent ParentTest\n\
-                        author AuthorTest <test@test.com> 1454691142 -0000\n\
-                        committer AuthorTest <test@test.com> 1454691142 -0000\n\n\
-                        MessageTest                               \n";
+        let expected = format!(
+            "tree TreeTest\n\
+             parent ParentTest\n\
+             author AuthorTest <test@test.com> 1454691142 {0}\n\
+             committer AuthorTest <test@test.com> 1454691142 {0}\n\n\
+             MessageTest",
+            commit_time.offset()
+        );
         assert_eq!(blob, expected);
 
         Ok(())
@@ -80,17 +84,19 @@ mod tests {
 
     #[test]
     fn test_blob_generation_without_parent() -> Result<(), Error> {
-        let tree = "TreeTest".to_string();
-        let parent = None;
-        let author = "AuthorTest <test@test.com>".to_string();
-        let message = "MessageTest".to_string();
-        let commit_time = time::strptime("2016-02-05 16:52:22", "%Y-%m-%d %H:%M:%S")?;
-        let blob = generate_blob(tree, parent, author, message, commit_time)?;
+        let tree = "TreeTest";
+        let author = "AuthorTest <test@test.com>";
+        let message = "MessageTest";
+        let commit_time = Local.timestamp_opt(1454691142, 0).unwrap();
+        let blob = generate_initial_blob(tree, author, message, &commit_time)?;
 
-        let expected = "tree TreeTest\n\
-                        author AuthorTest <test@test.com> 1454691142 -0000\n\
-                        committer AuthorTest <test@test.com> 1454691142 -0000\n\n\
-                        MessageTest                                                 \n";
+        let expected = format!(
+            "tree TreeTest\n\
+             author AuthorTest <test@test.com> 1454691142 {0}\n\
+             committer AuthorTest <test@test.com> 1454691142 {0}\n\n\
+             MessageTest",
+            commit_time.offset()
+        );
         assert_eq!(blob, expected);
 
         Ok(())
