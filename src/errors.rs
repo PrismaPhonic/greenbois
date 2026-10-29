@@ -1,3 +1,5 @@
+use chrono::NaiveDate;
+
 /// Errors originating from git2::Repository struct methods, translated for friendly error handling within
 /// the gitchain library.
 #[derive(Debug, thiserror::Error)]
@@ -16,6 +18,10 @@ pub enum RepositoryError {
     FindIndexError {},
     #[error("Failed to write tree.")]
     TreeWriteError {},
+    #[error("Failed to walk the repository's commit history.")]
+    RevwalkError {},
+    #[error("Failed to read an existing commit from the repository.")]
+    ReadCommitError {},
 }
 
 /// General IO errors.
@@ -45,6 +51,13 @@ pub enum WriterErrors {
     TimeFormatError {},
 }
 
+/// Errors from rewriting an existing repository's history.
+#[derive(Debug, thiserror::Error)]
+pub enum RewriteError {
+    #[error("Start date is too early to spread commits believably. Earliest acceptable start is {earliest}.")]
+    StartTooEarly { earliest: NaiveDate },
+}
+
 /// Top level error type wrapping all in-house errors.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -56,4 +69,6 @@ pub enum Error {
     GitTerminal(#[from] GitTerminalError),
     #[error(transparent)]
     Writer(#[from] WriterErrors),
+    #[error(transparent)]
+    Rewrite(#[from] RewriteError),
 }

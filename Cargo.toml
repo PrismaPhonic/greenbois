@@ -23,9 +23,10 @@ doc = false
 name = "greenbois"
 path = "src/bin/greenbois.rs"
 
+# TODO: Upgrade rand and criterion to latest (needs `cargo upgrade --incompatible`, rand has breaking API changes).
 [dependencies]
 structopt = "0.3.26"
-git2 = "0.11.0"
+git2 = "0.21.0"
 rand = "0.7.3"
 chrono = "0.4.45"
 thiserror = "2.0.21"
