@@ -4,7 +4,7 @@ use crate::errors::Error;
 // time_str takes a chrono::Local object and turns it into a string formatted per git commit
 // convention.
 pub fn time_string(time: &DateTime<Local>) -> Result<String, Error> {
-    Ok(format!("{} {}", time.timestamp(), time.offset(),))
+    Ok(time.format("%s %z").to_string())
 }
 
 pub fn generate_initial_blob(
@@ -61,6 +61,21 @@ mod tests {
     }
 
     #[test]
+    fn test_time_string_offset_format() -> Result<(), Error> {
+        let commit_time = Local.timestamp_opt(1454691142, 0).unwrap();
+        let time_str = time_string(&commit_time)?;
+        let (timestamp, offset) = time_str.split_once(' ').unwrap();
+
+        // Git requires offsets formatted as +HHMM or -HHMM, with no colon.
+        assert_eq!(timestamp, "1454691142");
+        assert_eq!(offset.len(), 5);
+        assert!(offset.starts_with('+') || offset.starts_with('-'));
+        assert!(offset[1..].chars().all(|c| c.is_ascii_digit()));
+
+        Ok(())
+    }
+
+    #[test]
     fn test_blob_generation_with_parent() -> Result<(), Error> {
         let tree = "TreeTest";
         let parent = "ParentTest".to_string();
@@ -75,7 +90,7 @@ mod tests {
              author AuthorTest <test@test.com> 1454691142 {0}\n\
              committer AuthorTest <test@test.com> 1454691142 {0}\n\n\
              MessageTest",
-            commit_time.offset()
+            commit_time.format("%z")
         );
         assert_eq!(blob, expected);
 
@@ -95,7 +110,7 @@ mod tests {
              author AuthorTest <test@test.com> 1454691142 {0}\n\
              committer AuthorTest <test@test.com> 1454691142 {0}\n\n\
              MessageTest",
-            commit_time.offset()
+            commit_time.format("%z")
         );
         assert_eq!(blob, expected);
 
