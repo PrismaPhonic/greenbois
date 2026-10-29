@@ -106,7 +106,7 @@ impl Rewriter {
 
     /// Allocates commit_count commits across the workdays between start_time and end_time
     /// (inclusive), returning each workday alongside how many commits it was given.
-    /// Any commits left over once we reach end_time are piled onto the last day.
+    /// Any commits left over once we reach end_time are added to randomly chosen days.
     fn allocate_to_days(
         commit_count: usize,
         start_time: DateTime<Local>,
@@ -134,10 +134,10 @@ impl Rewriter {
             remaining -= count;
         }
 
-        if remaining > 0 {
-            if let Some(last_day) = days.last_mut() {
-                last_day.1 += remaining;
-            }
+        let mut rng = rand::thread_rng();
+        for _ in 0..remaining {
+            let index = rng.gen_range(0, days.len());
+            days[index].1 += 1;
         }
 
         days
